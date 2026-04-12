@@ -40,7 +40,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'campusmind_backend.urls'
+ROOT_URLCONF = 'campusmind.urls'
 
 TEMPLATES = [
     {
@@ -58,7 +58,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = 'campusmind_backend.wsgi.application'
+WSGI_APPLICATION = 'campusmind.wsgi.application'
 
 DATABASES = {
     'default': {
