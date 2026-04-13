@@ -101,3 +101,44 @@ def calculate_streak(user):
         else:
             break
     return streak
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def log_mood(request):
+    """Log a new mood entry for the authenticated user."""
+    user = request.user
+    serializer = MoodEntrySerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save(user=user)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_mood_trends(request):
+    """Get mood trends for the authenticated user over time."""
+    user = request.user
+    entries = MoodEntry.objects.filter(user=user).order_by('-created_at')
+    
+    # Get last 30 days of entries
+    cutoff = timezone.now() - timedelta(days=30)
+    recent_entries = entries.filter(created_at__gte=cutoff)
+    serializer = MoodEntrySerializer(recent_entries, many=True)
+    
+    # Calculate trend statistics
+    scores = [entry.score for entry in recent_entries]
+    if scores:
+        avg_score = sum(scores) / len(scores)
+        trend = "improving" if scores[-1] > scores[0] else "declining" if scores[-1] < scores[0] else "stable"
+    else:
+        avg_score = 0
+        trend = "no data"
+    
+    return Response({
+        'entries': serializer.data,
+        'average_score': round(avg_score, 1),
+        'trend': trend,
+        'total_entries': len(scores)
+    })
