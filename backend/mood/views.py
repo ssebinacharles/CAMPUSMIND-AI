@@ -1,3 +1,6 @@
+# backend/mood/views.py
+
+import math
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -8,27 +11,38 @@ from datetime import timedelta
 from .models import MoodEntry
 from .serializers import MoodEntrySerializer
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def log_mood(request):
-    score = request.data.get('score')
-    note = request.data.get('note', '')
+# ---------- Stress Volatility Calculator ----------
+def calculate_stress_volatility(mood_scores):
+    """
+    Takes a list of mood scores (1-10) and calculates the Stress Volatility Index.
+    Returns a dict with volatility, needs_intervention, and insight.
+    """
+    if len(mood_scores) < 3:
+        return {
+            "volatility": 0,
+            "needs_intervention": False,
+            "insight": "Need at least 3 mood entries to calculate volatility."
+        }
 
-    if not score or not (1 <= int(score) <= 10):
-        return Response({'error': 'Score must be between 1 and 10'}, status=status.HTTP_400_BAD_REQUEST)
+    mean_mood = sum(mood_scores) / len(mood_scores)
+    variance = sum((x - mean_mood) ** 2 for x in mood_scores) / len(mood_scores)
+    volatility = math.sqrt(variance)
 
-    entry = MoodEntry.objects.create(user=request.user, score=score, note=note)
-    serializer = MoodEntrySerializer(entry)
-    return Response(serializer.data, status=status.HTTP_201_CREATED)
+    needs_intervention = volatility > 2.5
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_mood_trends(request):
-    days = int(request.query_params.get('days', 30))
-    cutoff = timezone.now() - timedelta(days=days)
-    entries = MoodEntry.objects.filter(user=request.user, created_at__gte=cutoff).order_by('created_at')
-    serializer = MoodEntrySerializer(entries, many=True)
-    return Response(serializer.data)
+    if needs_intervention:
+        insight = f"⚠️ High Volatility Alert ({volatility:.2f}). Your mood is fluctuating rapidly—a strong indicator of burnout. Let's stabilize with grounding techniques."
+    elif volatility < 0.5 and mean_mood < 4:
+        insight = f"📉 Low Volatility, Low Mood ({volatility:.2f}). You've been stuck in a continuous rut. Try a new coping strategy today."
+    else:
+        insight = f"✅ Stable Baseline ({volatility:.2f}). Your emotional state is well-regulated. Keep up your current routines."
+
+    return {
+        "volatility": round(volatility, 2),
+        "needs_intervention": needs_intervention,
+        "insight": insight
+    }
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -36,6 +50,13 @@ def get_mood_stats(request):
     user = request.user
     entries = MoodEntry.objects.filter(user=user)
     total = entries.count()
+
+    # Get last 7 days scores for volatility
+    cutoff = timezone.now() - timedelta(days=7)
+    recent_entries = entries.filter(created_at__gte=cutoff).order_by('created_at')
+    recent_scores = [entry.score for entry in recent_entries]
+
+    volatility_data = calculate_stress_volatility(recent_scores)
 
     if total > 0:
         avg = entries.aggregate(Avg('score'))['score__avg']
@@ -46,6 +67,9 @@ def get_mood_stats(request):
             'streak_days': calculate_streak(user),
             'latest_score': latest.score,
             'latest_date': latest.created_at,
+            'volatility': volatility_data['volatility'],
+            'needs_intervention': volatility_data['needs_intervention'],
+            'volatility_insight': volatility_data['insight'],
         }
     else:
         stats = {
@@ -54,8 +78,12 @@ def get_mood_stats(request):
             'streak_days': 0,
             'latest_score': None,
             'latest_date': None,
+            'volatility': 0,
+            'needs_intervention': False,
+            'volatility_insight': 'No mood data yet.',
         }
     return Response(stats)
+
 
 def calculate_streak(user):
     entries = MoodEntry.objects.filter(user=user).dates('created_at', 'day').order_by('-created_at')
