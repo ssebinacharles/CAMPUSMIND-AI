@@ -43,9 +43,9 @@ export const getCurrentUser = () => api.get('/me/');
 
 export const sendMessage = (message, conversationId = null) => 
   api.post('/chat/', { message, conversation_id: conversationId });
-export const listConversations = () => api.get('/conversations/');
-export const getConversation = (id) => api.get(`/conversations/${id}/`);
-export const deleteConversation = (id) => api.delete(`/conversations/${id}/delete/`);
+export const listConversations = () => api.get('/chat/conversations/');
+export const getConversation = (id) => api.get(`/chat/conversations/${id}/`);
+export const deleteConversation = (id) => api.delete(`/chat/conversations/${id}/delete/`);
 
 export const logMood = (score, note = '') => api.post('/mood/log/', { score, note });
 export const getMoodTrends = (days = 30) => api.get(`/mood/trends/?days=${days}`);

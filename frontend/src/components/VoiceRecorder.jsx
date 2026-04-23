@@ -27,10 +27,24 @@ export default function VoiceRecorder({ onTranscript }) {
   const stopRecording = () => recognitionRef.current?.stop();
 
   return (
-    <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={isProcessing && !isRecording}
-      className={`p-2 rounded-full transition-all ${isRecording ? 'bg-red-500 text-white animate-pulse' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-      title={isRecording ? 'Stop recording' : 'Start voice input'}>
-      {isProcessing && !isRecording ? <Loader2 size={20} className="animate-spin" /> : isRecording ? <Square size={20} /> : <Mic size={20} />}
+    <button
+      type="button"
+      onClick={isRecording ? stopRecording : startRecording}
+      disabled={isProcessing && !isRecording}
+      className={`p-2.5 rounded-xl transition-all ${
+        isRecording 
+          ? 'bg-red-500 text-white animate-pulse shadow-lg' 
+          : 'bg-white/80 backdrop-blur-sm border border-gray-200 text-gray-600 hover:bg-white hover:shadow-md'
+      }`}
+      title={isRecording ? 'Stop recording' : 'Start voice input'}
+    >
+      {isProcessing && !isRecording ? (
+        <Loader2 size={20} className="animate-spin" />
+      ) : isRecording ? (
+        <Square size={20} />
+      ) : (
+        <Mic size={20} />
+      )}
     </button>
   );
 }
